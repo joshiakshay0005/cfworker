@@ -1,0 +1,8 @@
+name = "custom-theme"
+type = "javascript"
+
+account_id = "c89f53cd847e50226d25f7e60d0b3e22"
+workers_dev = true
+route = ""
+zone_id = ""
+compatibility_date = "2022-01-21"
