@@ -13,42 +13,65 @@ const corsHeaders = {
  */
 async function handleRequest(request) {
 
-  let themeKeyId = 'current-theme-';
-  if (request.url.indexOf('tenantId')) {
-    const queryParam = request.url.split('?');
-    const tenantId = queryParam[1].split('=')[1];
-    themeKeyId = themeKeyId + tenantId;
-  }
-  let data = getData();
-
-  if(request.method === 'OPTIONS') {
-    return new Response("OK", {headers: corsHeaders});
-  }
-
-  if(request.method === 'POST') {
-    const reqBody = JSON.stringify(await request.json());
-    await styles.put(themeKeyId, reqBody);
-    return new Response(themeKeyId, {
-      headers: {
-        'content-type': 'application/json',
-        ...corsHeaders
-      },
-    });
-  }
-
-  if(request.method === 'GET') {
-    const storedKVThemeStyles = await styles.get(themeKeyId);
-    return new Response(storedKVThemeStyles, {
+  let response ;
+  if (request.method === 'GET' && (request.url.indexOf('/theme') > -1)) {
+    response = await getApiCalls(request, 'current-theme-');
+  } else if(request.method === 'POST' && request.url.indexOf('/theme') > -1) {
+    response = await saveApiCalls(request, 'current-theme-');
+  } else if(request.method === 'GET' && request.url.indexOf('/layout') > -1) {
+    response = await getApiCalls(request, 'current-layout-');
+  } else if(request.method === 'POST' && request.url.indexOf('/layout') > -1) {
+    response = await saveApiCalls(request, 'current-layout-');
+  } else {
+    response = new Response('Not Found', {
       headers: {
         'content-type': 'application/json',
         ...corsHeaders,
       },
     })
   }
+  return response;
 }
 
-function getData() {
-  return `{"primaryColor":{"key":"primaryColor","value":"#3F51B5"},"secondaryColor":{"key":"secondaryColor","value":"#00FF00"},"buttonColor":{"key":"buttonColor","value":"#3F51B5"},"buttonTextColor":{"key":"buttonTextColor","value":"#FFFFFF"},"textColor":{"key":"textColor","value":"#33d15b"},"linkTextColor":{"key":"linkTextColor","value":"#438137"},"menuColor":{"key":"menuColor","value":"#6879df"},"menuTextColor":{"key":"menuTextColor","value":"#e1cbcb"}}`
+const getApiCalls = async (request, keyId) => {
+  const KvStoreKeyId = getKVStoreKeyId(request, keyId);
+  optionsCall(request);
+  const storedKVThemeStyles = await styles.get(KvStoreKeyId);
+  return new Response(storedKVThemeStyles, {
+    headers: {
+      'content-type': 'application/json',
+      ...corsHeaders,
+    },
+  });
+}
+
+const saveApiCalls = async (request, keyId) => {
+  const KvStoreKeyId = getKVStoreKeyId(request, keyId);
+  optionsCall(request);
+  const reqBody = JSON.stringify(await request.json());
+  await styles.put(KvStoreKeyId, reqBody);
+  return new Response(KvStoreKeyId, {
+    headers: {
+      'content-type': 'application/json',
+      ...corsHeaders
+    },
+  });
+}
+
+const getKVStoreKeyId = (request, keyId) => {
+  let newKeyId;
+  if (request.url.indexOf('tenantId')) {
+    const queryParam = request.url.split('?');
+    const tenantId = queryParam[1].split('=')[1];
+    newKeyId = keyId + tenantId;
+  }
+  return newKeyId;
+}
+
+const optionsCall = (request) => {
+  if(request.method === 'OPTIONS') {
+    return new Response("OK", {headers: corsHeaders});
+  }
 }
 
 async function readRequestBody(request) {
