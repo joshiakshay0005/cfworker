@@ -13,7 +13,7 @@ const corsHeaders = {
  */
 async function handleRequest(request) {
 
-  let response ;
+  let response;
   if (request.method === 'GET' && (request.url.indexOf('/theme') > -1)) {
     response = await getApiCalls(request, 'current-theme-');
   } else if(request.method === 'POST' && request.url.indexOf('/theme') > -1) {
@@ -22,6 +22,8 @@ async function handleRequest(request) {
     response = await getApiCalls(request, 'current-layout-');
   } else if(request.method === 'POST' && request.url.indexOf('/layout') > -1) {
     response = await saveApiCalls(request, 'current-layout-');
+  } else if(request.method === 'POST' && request.url.indexOf('/clientlayout') > -1) {
+    response = await saveApiCalls(request, 'client-layout-');
   } else {
     response = new Response('Not Found', {
       headers: {
