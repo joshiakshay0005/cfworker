@@ -23,7 +23,7 @@ async function handleRequest(request) {
   } else if(request.method === 'POST' && request.url.indexOf('/layout') > -1) {
     response = await saveApiCalls(request, 'current-layout-');
   } else if(request.method === 'POST' && request.url.indexOf('/clientlayout') > -1) {
-    response = await saveApiCalls(request, 'client-layout-');
+    response = await saveClientApiCalls(request, '');
   } else {
     response = new Response('Not Found', {
       headers: {
@@ -47,10 +47,52 @@ const getApiCalls = async (request, keyId) => {
   });
 }
 
-const saveApiCalls = async (request, keyId) => {
-  const KvStoreKeyId = getKVStoreKeyId(request, keyId);
+const saveClientApiCalls = async (request) => {
+  let KvStoreKeyId;
+  let tenantId;
+  let userId;
+  if (request.url.indexOf('tenantId') && request.url.indexOf('userId')) {
+    const queryParam = request.url.split('?')[1].split('&');
+    tenantId = queryParam[0].split('=')[1];
+    userId = queryParam[1].split('=')[1];
+    KvStoreKeyId = `${tenantId}_${userId}`;
+  }
   optionsCall(request);
   const reqBody = JSON.stringify(await request.json());
+
+  // Start sync with current-layout
+  let currLayoutVal = await styles.get(`current-layout-${tenantId}`);
+  currLayoutVal = JSON.parse(currLayoutVal);
+  currLayoutVal.pages = JSON.parse(reqBody);
+  await styles.put(`current-layout-${tenantId}`, JSON.stringify(currLayoutVal));
+  // End sync with current-layout
+
+  await styles.put(KvStoreKeyId, reqBody);
+  return new Response(JSON.stringify(KvStoreKeyId), {
+    headers: {
+      'content-type': 'application/json',
+      ...corsHeaders
+    },
+  });
+}
+
+const saveApiCalls = async (request, keyId) => {
+  let KvStoreKeyId;
+  let tenantId;
+  if (request.url.indexOf('tenantId')) {
+    const queryParam = request.url.split('?');
+    tenantId = queryParam[1].split('=')[1];
+    KvStoreKeyId = keyId + tenantId;
+  }
+  optionsCall(request);
+  const reqBody = JSON.stringify(await request.json());
+
+  // Start sync with client-layout
+  let clientLayoutVal = JSON.parse(reqBody);
+  clientLayoutVal = clientLayoutVal.pages;
+  await styles.put(`${tenantId}_9fd7afa9-92c1-44fa-a0ff-b076fcadee53`, JSON.stringify(clientLayoutVal));
+  // End sync with client-layout
+
   await styles.put(KvStoreKeyId, reqBody);
   return new Response(KvStoreKeyId, {
     headers: {
