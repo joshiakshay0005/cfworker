@@ -24,6 +24,31 @@ async function handleRequest(request) {
     response = await saveApiCalls(request, 'current-layout-');
   } else if(request.method === 'POST' && request.url.indexOf('/clientlayout') > -1) {
     response = await saveClientApiCalls(request, '');
+  } else if(request.method === 'GET' && request.url.indexOf('/getclientlayout') > -1) {
+    let KvStoreKeyId;
+    let tenantId;
+    if (request.url.indexOf('tenantId') && request.url.indexOf('userId')) {
+      const queryParam = request.url.split('?')[1].split('&');
+      tenantId = queryParam[0].split('=')[1];
+      userId = queryParam[1].split('=')[1];
+      KvStoreKeyId = `${tenantId}_${userId}`;
+    }
+    const respData = await styles.get(KvStoreKeyId);
+    return new Response(respData, {
+      headers: {
+        'content-type': 'application/json',
+        ...corsHeaders
+      },
+    });
+  } else if(request.method === 'GET' && request.url.indexOf('/getUserId') > -1) {
+    const userId = Math.random().toString(36).slice(2);
+    const resp = JSON.stringify({userId: userId});
+    return new Response(resp, {
+      headers: {
+        'content-type': 'application/json',
+        ...corsHeaders,
+      },
+    });
   } else {
     response = new Response('Not Found', {
       headers: {
@@ -50,54 +75,55 @@ const getApiCalls = async (request, keyId) => {
 const saveClientApiCalls = async (request) => {
   let KvStoreKeyId;
   let tenantId;
-  let userId = await styles.get('userId');;
-  if (request.url.indexOf('tenantId')) {
-    const queryParam = request.url.split('?');
-    tenantId = queryParam[1].split('=')[1];
+  if (request.url.indexOf('tenantId') && request.url.indexOf('userId')) {
+    const queryParam = request.url.split('?')[1].split('&');
+    tenantId = queryParam[0].split('=')[1];
+    userId = queryParam[1].split('=')[1];
     KvStoreKeyId = `${tenantId}_${userId}`;
   }
   optionsCall(request);
   const reqBody = JSON.stringify(await request.json());
-  const clientLayoutVal = JSON.parse(reqBody);
-  // Start sync with current-layout
-  let currLayoutVal = await styles.get(`current-layout-${tenantId}`);
-  currLayoutVal = JSON.parse(currLayoutVal);
-  currLayoutVal.pages.forEach((page) => {
-    const clientItemPage = clientLayoutVal.find((ele) => ele.pageId == page.pageId);
-    if (clientItemPage && clientItemPage.items.length > 0) {
-      page.pageLayout.layoutFormat.forEach(layout => {
-        layout.columnItems.forEach(column => {
-          column.itemsContainer.forEach(item => {
-            if(Array.isArray(item)) {
-              item.forEach(itemDetails => {
-                if (itemDetails.properties) {
-                  const clientItemVal = clientItemPage.items.find(elem => (elem.itemPropsId === itemDetails.properties.id) || (elem.itemOuterId === item.id  && elem.rowId === layout.rowId && elem.columnId === column.columnId));
-                  if (clientItemVal) {
-                    itemDetails.properties.defaultValue = clientItemVal.value;
-                  } else {
-                    itemDetails.properties.defaultValue = '';
-                  }
-                }
-              })
-            } else {
-              if (item.properties) {
-                const clientItemVal = clientItemPage.items.find(elem => ((elem.itemPropsId === item.properties.id) || (elem.itemOuterId === item.id  && elem.rowId === layout.rowId && elem.columnId === column.columnId)));
-                if (clientItemVal) {
-                  item.properties.defaultValue = clientItemVal.value;
-                  console.log('clientItemVal:', JSON.stringify(clientItemVal));
-                  console.log('item:', JSON.stringify(item.properties));
-                } else {
-                  item.properties.defaultValue = '';
-                }
-              }
-            }
-          });
-        });
-      });
-    }
-  })
-  await styles.put(`current-layout-${tenantId}`, JSON.stringify(currLayoutVal));
-  // End sync with current-layout
+
+  // const clientLayoutVal = JSON.parse(reqBody);
+  // // Start sync with current-layout
+  // let currLayoutVal = await styles.get(`current-layout-${tenantId}`);
+  // currLayoutVal = JSON.parse(currLayoutVal);
+  // currLayoutVal.pages.forEach((page) => {
+  //   const clientItemPage = clientLayoutVal.find((ele) => ele.pageId == page.pageId);
+  //   if (clientItemPage && clientItemPage.items.length > 0) {
+  //     page.pageLayout.layoutFormat.forEach(layout => {
+  //       layout.columnItems.forEach(column => {
+  //         column.itemsContainer.forEach(item => {
+  //           if(Array.isArray(item)) {
+  //             item.forEach(itemDetails => {
+  //               if (itemDetails.properties) {
+  //                 const clientItemVal = clientItemPage.items.find(elem => (elem.itemPropsId === itemDetails.properties.id) || (elem.itemOuterId === item.id  && elem.rowId === layout.rowId && elem.columnId === column.columnId));
+  //                 if (clientItemVal) {
+  //                   itemDetails.properties.defaultValue = clientItemVal.value;
+  //                 } else {
+  //                   itemDetails.properties.defaultValue = '';
+  //                 }
+  //               }
+  //             })
+  //           } else {
+  //             if (item.properties) {
+  //               const clientItemVal = clientItemPage.items.find(elem => ((elem.itemPropsId === item.properties.id) || (elem.itemOuterId === item.id  && elem.rowId === layout.rowId && elem.columnId === column.columnId)));
+  //               if (clientItemVal) {
+  //                 item.properties.defaultValue = clientItemVal.value;
+  //                 console.log('clientItemVal:', JSON.stringify(clientItemVal));
+  //                 console.log('item:', JSON.stringify(item.properties));
+  //               } else {
+  //                 item.properties.defaultValue = '';
+  //               }
+  //             }
+  //           }
+  //         });
+  //       });
+  //     });
+  //   }
+  // })
+  // await styles.put(`current-layout-${tenantId}`, JSON.stringify(currLayoutVal));
+  // // End sync with current-layout
 
   await styles.put(KvStoreKeyId, reqBody);
   return new Response(userId, {
