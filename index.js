@@ -24,6 +24,10 @@ async function handleRequest(request) {
     response = await saveApiCalls(request, 'current-layout-');
   } else if(request.method === 'POST' && request.url.indexOf('/clientlayout') > -1) {
     response = await saveClientApiCalls(request, '');
+  } else if(request.method === 'POST' && request.url.indexOf('/accesstoken') > -1) {
+    response = await saveAccessTokanCalls(request, 'access-token-');
+  } else if(request.method === 'GET' && request.url.indexOf('/accesstoken') > -1) {
+    response = await getApiCalls(request, 'access-token-');
   } else if(request.method === 'GET' && request.url.indexOf('/getclientlayout') > -1) {
     let KvStoreKeyId;
     let tenantId;
@@ -68,6 +72,26 @@ const getApiCalls = async (request, keyId) => {
     headers: {
       'content-type': 'application/json',
       ...corsHeaders,
+    },
+  });
+}
+
+const saveAccessTokanCalls = async (request, keyId) => {
+  let KvStoreKeyId;
+  let tenantId;
+  if (request.url.indexOf('tenantId')) {
+    const queryParam = request.url.split('?');
+    tenantId = queryParam[1].split('=')[1];
+    KvStoreKeyId = keyId + tenantId;
+  }
+  optionsCall(request);
+  const reqBody = JSON.stringify(await request.json());
+
+  await styles.put(KvStoreKeyId, reqBody);
+  return new Response(KvStoreKeyId, {
+    headers: {
+      'content-type': 'application/json',
+      ...corsHeaders
     },
   });
 }
