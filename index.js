@@ -19,7 +19,7 @@ async function handleRequest(request) {
   } else if(request.method === 'POST' && request.url.indexOf('/theme') > -1) {
     response = await saveApiCalls(request, 'current-theme-');
   } else if(request.method === 'GET' && request.url.indexOf('/layout') > -1) {
-    response = await getApiCalls(request, 'current-layout-');
+    response = await getApiCallsWithLanguage(request, 'current-layout-');
   } else if(request.method === 'POST' && request.url.indexOf('/layout') > -1) {
     response = await saveApiCalls(request, 'current-layout-');
   } else if(request.method === 'POST' && request.url.indexOf('/clientlayout') > -1) {
@@ -66,6 +66,18 @@ async function handleRequest(request) {
 
 const getApiCalls = async (request, keyId) => {
   const KvStoreKeyId = getKVStoreKeyId(request, keyId);
+  optionsCall(request);
+  const storedKVThemeStyles = await styles.get(KvStoreKeyId);
+  return new Response(storedKVThemeStyles, {
+    headers: {
+      'content-type': 'application/json',
+      ...corsHeaders,
+    },
+  });
+}
+
+const getApiCallsWithLanguage = async (request, keyId) => {
+  const KvStoreKeyId = getKVStoreKeyLanguageId(request, keyId);
   optionsCall(request);
   const storedKVThemeStyles = await styles.get(KvStoreKeyId);
   return new Response(storedKVThemeStyles, {
@@ -162,9 +174,16 @@ const saveApiCalls = async (request, keyId) => {
   let KvStoreKeyId;
   let tenantId;
   if (request.url.indexOf('tenantId')) {
-    const queryParam = request.url.split('?');
-    tenantId = queryParam[1].split('=')[1];
-    KvStoreKeyId = keyId + tenantId;
+    const queryParam1 = request.url.split('?');
+    if(request.url.indexOf('language')) {
+      const queryParam2 = queryParam1[1].split('&');
+      tenantId = queryParam2[0].split('=')[1];
+      langId = queryParam2[1].split('=')[1];
+      KvStoreKeyId = keyId + tenantId + '-' + langId;
+    } else {
+      tenantId = queryParam1[1].split('=')[1];
+      KvStoreKeyId = keyId + tenantId;
+    }
   }
   optionsCall(request);
   const reqBody = JSON.stringify(await request.json());
@@ -190,6 +209,29 @@ const getKVStoreKeyId = (request, keyId) => {
     const queryParam = request.url.split('?');
     const tenantId = queryParam[1].split('=')[1];
     newKeyId = keyId + tenantId;
+  }
+  return newKeyId;
+}
+
+const getKVStoreKeyLanguageId = (request, keyId) => {
+  let newKeyId;
+  // if (request.url.indexOf('tenantId')) {
+  //   const queryParam = request.url.split('?');
+  //   const tenantId = queryParam[1].split('=')[1];
+  //   newKeyId = keyId + tenantId;
+  // }
+  let tenantId;
+  if (request.url.indexOf('tenantId')) {
+    const queryParam1 = request.url.split('?');
+    if (request.url.indexOf('language')) {
+      const queryParam2 = queryParam1[1].split('&');
+      tenantId = queryParam2[0].split('=')[1];
+      langId = queryParam2[1].split('=')[1];
+      newKeyId = keyId + tenantId + '-' + langId;
+    } else {
+      tenantId = queryParam1[1].split('=')[1];
+      newKeyId = keyId + tenantId;
+    }
   }
   return newKeyId;
 }
