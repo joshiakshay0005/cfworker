@@ -19,7 +19,11 @@ async function handleRequest(request) {
   } else if(request.method === 'POST' && request.url.indexOf('/theme') > -1) {
     response = await saveApiCalls(request, 'current-theme-');
   } else if(request.method === 'GET' && request.url.indexOf('/layout') > -1) {
-    response = await getApiCallsWithLanguage(request, 'current-layout-');
+    if (request.url.indexOf('language') > -1) {
+      response = await getApiCallsWithLanguage(request, 'current-layout-');
+    } else {
+      response = await getApiCalls(request, 'current-layout-');
+    }
   } else if(request.method === 'POST' && request.url.indexOf('/layout') > -1) {
     response = await saveApiCalls(request, 'current-layout-');
   } else if(request.method === 'POST' && request.url.indexOf('/clientlayout') > -1) {
