@@ -214,12 +214,18 @@ const saveTranslationsApiCalls = async (request, keyId) => {
   // Start sync with translations data
   let translationsData = await styles.get(`translations-${tenantId}`);
   translationsData = JSON.parse(translationsData);
-  const enLanguageData = translationsData['en_us'];
-  enLanguageData[translationsReqData.key] = translationsReqData['en_value'];
-  const frLanguageData = translationsData['fr'];
-  frLanguageData[translationsReqData.key] = translationsReqData['fr_value'];
-  const esLanguageData = translationsData['es'];
-  esLanguageData[translationsReqData.key] = translationsReqData['es_value'];
+  if (translationsReqData['en_value']) {
+    const enLanguageData = translationsData['en_us'];
+    enLanguageData[translationsReqData.key] = translationsReqData['en_value'];
+  }
+  if (translationsReqData['fr_value']) {
+    const frLanguageData = translationsData['fr'];
+    frLanguageData[translationsReqData.key] = translationsReqData['fr_value'];
+  }
+  if (translationsReqData['es_value']) {
+    const esLanguageData = translationsData['es'];
+    esLanguageData[translationsReqData.key] = translationsReqData['es_value'];
+  }
   // End sync with translations data
 
   await styles.put(KvStoreKeyId, JSON.stringify(translationsData));
