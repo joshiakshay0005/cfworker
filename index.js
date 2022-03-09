@@ -214,8 +214,12 @@ const saveTranslationsApiCalls = async (request, keyId) => {
   // Start sync with translations data
   let translationsData = await styles.get(`translations-${tenantId}`);
   translationsData = JSON.parse(translationsData);
-  const selectedLanguageData = translationsData[translationsReqData.language];
-  selectedLanguageData[translationsReqData.key] = translationsReqData.value;
+  const enLanguageData = translationsData['en_us'];
+  enLanguageData[translationsReqData.key] = translationsReqData['en_value'];
+  const frLanguageData = translationsData['fr'];
+  frLanguageData[translationsReqData.key] = translationsReqData['fr_value'];
+  const esLanguageData = translationsData['es'];
+  esLanguageData[translationsReqData.key] = translationsReqData['es_value'];
   // End sync with translations data
 
   await styles.put(KvStoreKeyId, JSON.stringify(translationsData));
