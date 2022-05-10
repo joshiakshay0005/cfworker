@@ -1,5 +1,5 @@
 addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request))
+  event.respondWith(handleRequest(event))
 })
 
 const corsHeaders = {
@@ -11,8 +11,8 @@ const corsHeaders = {
  * Respond with custom theme text
  * @param {Request} request
  */
-async function handleRequest(request) {
-
+async function handleRequest(event) {
+  let request = event.request;
   let response;
   if (request.method === 'GET' && (request.url.indexOf('/theme') > -1)) {
     response = await getApiCalls(request, 'current-theme-');
@@ -40,6 +40,10 @@ async function handleRequest(request) {
     response = await saveTranslationsApiCalls(request, 'translations-');
   } else if(request.method === 'GET' && request.url.indexOf('/accesstoken') > -1) {
     response = await getApiCalls(request, 'access-token-');
+  } else if(request.method === 'GET' && request.url.indexOf('/getWebComp') > -1) {
+    response = await getHTMLWebCompApiCalls(request, event);
+    // response = await getJSWebCompApiCalls(request);
+    return response;
   } else if(request.method === 'GET' && request.url.indexOf('/getclientlayout') > -1) {
     let KvStoreKeyId;
     let tenantId;
@@ -65,6 +69,14 @@ async function handleRequest(request) {
         ...corsHeaders,
       },
     });
+  } else if (request.method === 'GET' && (request.url.indexOf('/analytics') > -1)) {
+    response = await getApiCalls(request, 'analytics-');
+  } else if(request.method === 'POST' && request.url.indexOf('/analytics') > -1) {
+    response = await saveApiCalls(request, 'analytics-');
+  } else if(request.method === 'GET' && request.url.indexOf('/upload') > -1) {
+    response = await fileGetApiCalls(request, 'upload-');
+  } else if(request.method === 'POST' && request.url.indexOf('/upload') > -1) {
+    response = await uploadApiCalls(request, 'upload-');
   } else {
     response = new Response('Not Found', {
       headers: {
@@ -75,6 +87,82 @@ async function handleRequest(request) {
   }
   return response;
 }
+
+async function gatherResponse(response) {
+  const { headers } = response;
+  const contentType = headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return JSON.stringify(await response.json());
+  } else if (contentType.includes('application/text')) {
+    return response.text();
+  } else if (contentType.includes('text/html')) {
+    return response.text();
+  } else {
+    return response.text();
+  }
+}
+
+async function getHTMLWebCompApiCalls(request, event) {
+  const url = `https://tcnew.blob.core.windows.net/webcomp/home.component.html`;
+  const init = {
+    headers: {
+      'content-type': 'text/html;charset=UTF-8',
+    },
+    cf: {
+      // Always cache this fetch regardless of content type
+      // for a max of 600 seconds before revalidating the resource
+      cacheTtl: 600,
+      cacheEverything: true,
+      // Enterprise only feature, see Cache API for other plans
+      // cacheKey: 'web-comp',
+    }
+  };
+  let response = await fetch(url, init);
+  // Reconstruct the Response object to make its headers mutable.
+  response = new Response(response.body, response);
+  // Set cache control headers to cache on browser for 30 minutes
+  response.headers.set('cache-control', `public, max-age=1800`);
+  console.log('headers:', response.headers.get('cache-control'));
+  // const results = await gatherResponse(response);
+  return response;
+}
+
+async function getJSWebCompApiCalls(request) {
+  let jsFileName = getJsFilename(request.url);
+  jsFileName = `${jsFileName}.js`
+  const url = `https://tcnew.blob.core.windows.net/webcomp/${jsFileName}`;
+  const init = {
+    headers: {
+      'content-type': 'application/x-javascript',
+    },
+    cf: {
+      // Always cache this fetch regardless of content type
+      // for a max of 600 seconds before revalidating the resource
+      cacheTtl: 600,
+      cacheEverything: true,
+      // Enterprise only feature, see Cache API for other plans
+      // cacheKey: 'webcomp',
+    }
+  };
+  let response = await fetch(url, init);
+  // Reconstruct the Response object to make its headers mutable.
+  response = new Response(response.body, response);
+  // Set cache control headers to cache on browser for 30 minutes
+  response.headers.set('cache-control', `public, max-age=1800`);
+  console.log('headers:', response.headers.get('cache-control'));
+  // const results = await gatherResponse(response);
+  return response;
+}
+
+const getJsFilename = (url) => {
+  let fileName;
+  if (url.indexOf('fileName')) {
+    const queryParam = url.split('?');
+    fileName = queryParam[1].split('=')[1];
+  }
+  return fileName;
+}
+
 
 const getApiCalls = async (request, keyId) => {
   const KvStoreKeyId = getKVStoreKeyId(request, keyId);
@@ -194,6 +282,59 @@ const saveApiCalls = async (request, keyId) => {
     headers: {
       'content-type': 'application/json',
       ...corsHeaders
+    },
+  });
+}
+
+const uploadApiCalls = async (request, keyId) => {
+  let KvStoreKeyId;
+  let tenantId;
+  if (request.url.indexOf('tenantId') > -1) {
+    const queryParam1 = request.url.split('?');
+    if (request.url.indexOf('language') > -1) {
+      const queryParam2 = queryParam1[1].split('&');
+      tenantId = queryParam2[0].split('=')[1];
+      langId = queryParam2[1].split('=')[1];
+      KvStoreKeyId = keyId + tenantId + '-' + langId;
+    } else {
+      tenantId = queryParam1[1].split('=')[1];
+      KvStoreKeyId = keyId + tenantId;
+    }
+  }
+  optionsCall(request);
+  // const formData = await request.formData();
+  // const file = formData.get('file');
+  // console.log(formData);
+  // console.log(file);
+  // const body = {};
+  // for (const entry of formData.entries()) {
+  //   body[entry[0]] = entry[1];
+  // }
+  // console.log(JSON.stringify(body));
+  // Start sync with client-layout
+  // let clientLayoutVal = JSON.parse(reqBody);
+  // clientLayoutVal = clientLayoutVal.pages;
+  // await styles.put(`${tenantId}_9fd7afa9-92c1-44fa-a0ff-b076fcadee53`, JSON.stringify(clientLayoutVal));
+  // End sync with client-layout
+
+  const reqBody = JSON.stringify(await request.json());
+  await styles.put(KvStoreKeyId, JSON.stringify(reqBody));
+  return new Response(reqBody, {
+    headers: {
+      'content-type': 'application/json',
+      ...corsHeaders
+    },
+  });
+}
+
+const fileGetApiCalls = async (request, keyId) => {
+  const KvStoreKeyId = getKVStoreKeyId(request, keyId);
+  optionsCall(request);
+  const storedKVThemeStyles = await styles.get(KvStoreKeyId);
+  return new Response(storedKVThemeStyles, {
+    headers: {
+      'content-type': 'multipart/form-data',
+      ...corsHeaders,
     },
   });
 }
