@@ -121,7 +121,7 @@ async function getHTMLWebCompApiCalls(request, event) {
   // Reconstruct the Response object to make its headers mutable.
   response = new Response(response.body, response);
   // Set cache control headers to cache on browser for 30 minutes
-  response.headers.set('cache-control', `public, max-age=1800`);
+  response.headers.set('cache-control', `max-age=1800`);
   console.log('headers:', response.headers.get('cache-control'));
   // const results = await gatherResponse(response);
   return response;
@@ -148,7 +148,7 @@ async function getJSWebCompApiCalls(request) {
   // Reconstruct the Response object to make its headers mutable.
   response = new Response(response.body, response);
   // Set cache control headers to cache on browser for 30 minutes
-  response.headers.set('cache-control', `public, max-age=1800`);
+  response.headers.set('cache-control', `max-age=1800`);
   console.log('headers:', response.headers.get('cache-control'));
   // const results = await gatherResponse(response);
   return response;
