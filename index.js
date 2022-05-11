@@ -40,7 +40,7 @@ async function handleRequest(event) {
     response = await saveTranslationsApiCalls(request, 'translations-');
   } else if(request.method === 'GET' && request.url.indexOf('/accesstoken') > -1) {
     response = await getApiCalls(request, 'access-token-');
-  } else if(request.method === 'GET' && request.url.indexOf('/getWebComp') > -1) {
+  } else if(request.method === 'GET' && request.url.indexOf('api/getWebComp') > -1) {
     response = await getHTMLWebCompApiCalls(request, event);
     // response = await getJSWebCompApiCalls(request);
     return response;
@@ -103,55 +103,81 @@ async function gatherResponse(response) {
 }
 
 async function getHTMLWebCompApiCalls(request, event) {
-  const url = `https://tcnew.blob.core.windows.net/webcomp/home.component.html`;
-  const init = {
-    headers: {
-      'content-type': 'text/html;charset=UTF-8',
-    },
-    cf: {
-      // Always cache this fetch regardless of content type
-      // for a max of 600 seconds before revalidating the resource
-      cacheTtl: 600,
-      cacheEverything: true,
-      // Enterprise only feature, see Cache API for other plans
-      // cacheKey: 'web-comp',
-    }
-  };
-  let response = await fetch(url, init);
-  // Reconstruct the Response object to make its headers mutable.
-  response = new Response(response.body, response);
-  // Set cache control headers to cache on browser for 30 minutes
-  response.headers.set('cache-control', `max-age=1800`);
-  console.log('headers:', response.headers.get('cache-control'));
-  // const results = await gatherResponse(response);
-  return response;
+  // KV store to be available for the authkey
+  const host = request.headers.get("Host");
+  const queryParams = getWebCompQueryParams(request.url);
+  const keyStoreKeyId = `${queryParams['tenantid']}_${host}`;
+  let kvAuthKeyData = await styles.get(keyStoreKeyId);
+  kvAuthKeyData = JSON.parse(kvAuthKeyData);
+  if (!queryParams['key']) {
+    return new Response('Bad Request', { status: 400});
+  } else if (kvAuthKeyData['authkey'] !== queryParams['key']) {
+    return new Response('User Not Authenticated', { status: 403});
+  } else {
+    const blobUrl = `https://tcnew.blob.core.windows.net/webcomp${queryParams['version']}/home.component.html`;
+    const init = {
+      headers: {
+        'content-type': 'text/html;charset=UTF-8',
+      },
+      cf: {
+        // Always cache this fetch regardless of content type
+        // for a max of 600 seconds before revalidating the resource
+        cacheTtl: 600,
+        cacheEverything: true,
+      }
+    };
+    let response = await fetch(blobUrl, init);
+    // Reconstruct the Response object to make its headers mutable.
+    response = new Response(response.body, response);
+    // Set cache control headers to cache on browser for 30 minutes
+    response.headers.set('cache-control', `max-age=1800`);
+    return response;
+  }
 }
 
 async function getJSWebCompApiCalls(request) {
-  let jsFileName = getJsFilename(request.url);
-  jsFileName = `${jsFileName}.js`
-  const url = `https://tcnew.blob.core.windows.net/webcomp/${jsFileName}`;
-  const init = {
-    headers: {
-      'content-type': 'application/x-javascript',
-    },
-    cf: {
-      // Always cache this fetch regardless of content type
-      // for a max of 600 seconds before revalidating the resource
-      cacheTtl: 600,
-      cacheEverything: true,
-      // Enterprise only feature, see Cache API for other plans
-      // cacheKey: 'webcomp',
-    }
-  };
-  let response = await fetch(url, init);
-  // Reconstruct the Response object to make its headers mutable.
-  response = new Response(response.body, response);
-  // Set cache control headers to cache on browser for 30 minutes
-  response.headers.set('cache-control', `max-age=1800`);
-  console.log('headers:', response.headers.get('cache-control'));
-  // const results = await gatherResponse(response);
-  return response;
+  // KV store to be available for the authkey
+  const host = request.headers.get("Host");
+  const queryParams = getWebCompQueryParams(request.url);
+  const keyStoreKeyId = `${queryParams['tenantid']}_${host}`;
+  let kvAuthKeyData = await styles.get(keyStoreKeyId);
+  kvAuthKeyData = JSON.parse(kvAuthKeyData);
+  if (!queryParams['key']) {
+    return new Response('Bad Request', { status: 400});
+  } else if (kvAuthKeyData['authkey'] !== queryParams['key']) {
+    return new Response('User Not Authenticated', { status: 403});
+  } else {
+    const blobUrl = `https://tcnew.blob.core.windows.net/webcomp${queryParams['version']}/${queryParams['webcompname']}.js`;
+    const init = {
+      headers: {
+        'content-type': 'application/x-javascript',
+      },
+      cf: {
+        // Always cache this fetch regardless of content type
+        // for a max of 600 seconds before revalidating the resource
+        cacheTtl: 600,
+        cacheEverything: true,
+      }
+    };
+    let response = await fetch(blobUrl, init);
+    // Reconstruct the Response object to make its headers mutable.
+    response = new Response(response.body, response);
+    // Set cache control headers to cache on browser for 30 minutes
+    response.headers.set('cache-control', `max-age=1800`);
+    return response;
+  }
+}
+
+const getWebCompQueryParams = (url) => {
+  let queryParams = {};
+  if (url.indexOf('tenantid')) {
+    const params = url.split('?')[1].split('&');
+    params.forEach(item => {
+      keyValue = item.split('=');
+      queryParams[keyValue[0]] = keyValue[1];
+    });
+  }
+  return queryParams;
 }
 
 const getJsFilename = (url) => {
