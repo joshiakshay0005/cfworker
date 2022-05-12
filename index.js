@@ -153,7 +153,7 @@ async function getJSWebCompApiCalls(request) {
       cf: {
         // Always cache this fetch regardless of content type
         // for a max of 1800 seconds before revalidating the resource
-        cacheTtl: 1800,
+        cacheTtl: 10,
         cacheEverything: true,
       }
     };
@@ -186,7 +186,6 @@ const getJsFilename = (url) => {
   }
   return fileName;
 }
-
 
 const getApiCalls = async (request, keyId) => {
   const KvStoreKeyId = getKVStoreKeyId(request, keyId);
