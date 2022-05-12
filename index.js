@@ -40,9 +40,9 @@ async function handleRequest(event) {
     response = await saveTranslationsApiCalls(request, 'translations-');
   } else if(request.method === 'GET' && request.url.indexOf('/accesstoken') > -1) {
     response = await getApiCalls(request, 'access-token-');
-  } else if(request.method === 'GET' && request.url.indexOf('api/getWebComp') > -1) {
-    response = await getHTMLWebCompApiCalls(request, event);
-    // response = await getJSWebCompApiCalls(request);
+  } else if(request.method === 'GET' && request.url.indexOf('api/js') > -1) {
+    // response = await getHTMLWebCompApiCalls(request, event);
+    response = await getJSWebCompApiCalls(request);
     return response;
   } else if(request.method === 'GET' && request.url.indexOf('/getclientlayout') > -1) {
     let KvStoreKeyId;
@@ -106,12 +106,11 @@ async function getHTMLWebCompApiCalls(request, event) {
   // KV store to be available for the authkey
   const host = request.headers.get("Host");
   const queryParams = getWebCompQueryParams(request.url);
-  const keyStoreKeyId = `${queryParams['tenantid']}_${host}`;
+  const keyStoreKeyId = `${host}_${queryParams['key']}`;
   let kvAuthKeyData = await styles.get(keyStoreKeyId);
-  kvAuthKeyData = JSON.parse(kvAuthKeyData);
   if (!queryParams['key']) {
     return new Response('Bad Request', { status: 400});
-  } else if (kvAuthKeyData['authkey'] !== queryParams['key']) {
+  } else if (kvAuthKeyData === null) {
     return new Response('User Not Authenticated', { status: 403});
   } else {
     const blobUrl = `https://tcnew.blob.core.windows.net/webcomp${queryParams['version']}/home.component.html`;
@@ -121,16 +120,16 @@ async function getHTMLWebCompApiCalls(request, event) {
       },
       cf: {
         // Always cache this fetch regardless of content type
-        // for a max of 600 seconds before revalidating the resource
-        cacheTtl: 600,
+        // for a max of 1800 seconds before revalidating the resource
+        cacheTtl: 1800,
         cacheEverything: true,
       }
     };
     let response = await fetch(blobUrl, init);
     // Reconstruct the Response object to make its headers mutable.
     response = new Response(response.body, response);
-    // Set cache control headers to cache on browser for 30 minutes
-    response.headers.set('cache-control', `max-age=1800`);
+    // Set cache control headers to cache on browser for 3600 seconds
+    response.headers.set('cache-control', `max-age=3600`);
     return response;
   }
 }
@@ -139,12 +138,11 @@ async function getJSWebCompApiCalls(request) {
   // KV store to be available for the authkey
   const host = request.headers.get("Host");
   const queryParams = getWebCompQueryParams(request.url);
-  const keyStoreKeyId = `${queryParams['tenantid']}_${host}`;
+  const keyStoreKeyId = `${host}_${queryParams['key']}`;
   let kvAuthKeyData = await styles.get(keyStoreKeyId);
-  kvAuthKeyData = JSON.parse(kvAuthKeyData);
   if (!queryParams['key']) {
     return new Response('Bad Request', { status: 400});
-  } else if (kvAuthKeyData['authkey'] !== queryParams['key']) {
+  } else if (kvAuthKeyData === null) {
     return new Response('User Not Authenticated', { status: 403});
   } else {
     const blobUrl = `https://tcnew.blob.core.windows.net/webcomp${queryParams['version']}/${queryParams['webcompname']}.js`;
@@ -154,16 +152,16 @@ async function getJSWebCompApiCalls(request) {
       },
       cf: {
         // Always cache this fetch regardless of content type
-        // for a max of 600 seconds before revalidating the resource
-        cacheTtl: 600,
+        // for a max of 1800 seconds before revalidating the resource
+        cacheTtl: 1800,
         cacheEverything: true,
       }
     };
     let response = await fetch(blobUrl, init);
     // Reconstruct the Response object to make its headers mutable.
     response = new Response(response.body, response);
-    // Set cache control headers to cache on browser for 30 minutes
-    response.headers.set('cache-control', `max-age=1800`);
+    // Set cache control headers to cache on browser for 3600 seconds
+    response.headers.set('cache-control', `max-age=3600`);
     return response;
   }
 }
