@@ -71,6 +71,8 @@ async function handleRequest(event) {
     });
   } else if (request.method === 'GET' && (request.url.indexOf('/analytics') > -1)) {
     response = await getApiCalls(request, 'analytics-');
+  } else if (request.method === 'GET' && (request.url.indexOf('/getlist') > -1)) {
+    response = await getApiCalls(request, 'listdata-');
   } else if(request.method === 'POST' && request.url.indexOf('/analytics') > -1) {
     response = await saveApiCalls(request, 'analytics-');
   } else if(request.method === 'GET' && request.url.indexOf('/upload') > -1) {
